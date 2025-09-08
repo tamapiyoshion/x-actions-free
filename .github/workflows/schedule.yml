@@ -1,0 +1,33 @@
+name: Post to X (scheduled)
+on:
+  schedule:
+    - cron: '30 22 * * *'  # JST 07:30
+    - cron: '10 3 * * *'   # JST 12:10
+    - cron: '0 11 * * *'   # JST 20:00
+    - cron: '30 11 * * *'  # JST 20:30
+    - cron: '0 12 * * *'   # JST 21:00
+  workflow_dispatch: {}
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install tweepy
+      - name: Post one tweet from queue
+        env:
+          CONSUMER_KEY: ${{ secrets.CONSUMER_KEY }}
+          CONSUMER_SECRET: ${{ secrets.CONSUMER_SECRET }}
+          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
+        run: python app/post_from_file.py
+      - name: Commit queue changes
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git config user.name "actions-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add data/queue.txt
+            git commit -m "dequeue by workflow"
+            git push
+          fi
